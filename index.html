@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🔥 Multiplayer Click Race</title>
+
+    <!-- ===== FIREBASE v9 MODULAR SDK (via CDN) ===== -->
+    <script type="importmap">
+        {
+            "imports": {
+                "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+                "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
+            }
+        }
+    </script>
+
+    <style>
+        /* ----- RESET / BASE ----- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(145deg, #0b0e1a 0%, #1a1f33 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+            color: #f0f4ff;
+        }
+
+        /* ----- GAME CONTAINER ----- */
+        .game-container {
+            max-width: 820px;
+            width: 100%;
+            background: rgba(22, 28, 50, 0.85);
+            backdrop-filter: blur(12px);
+            border-radius: 48px;
+            padding: 36px 40px 44px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: opacity 0.3s;
+        }
+
+        /* ----- HEADER ----- */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header h1 span {
+            font-size: 30px;
+            -webkit-text-fill-color: initial;
+        }
+
+        .player-badge {
+            background: rgba(255, 255, 255, 0.07);
+            padding: 8px 18px 8px 16px;
+            border-radius: 100px;
+            font-size: 15px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .player-badge .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #34d399;
+            display: inline-block;
+            animation: pulse-dot 1.8s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(0.85);
+            }
+        }
+
+        .player-badge .name {
+            color: #e2e8f0;
+        }
+
+        .player-badge .score-label {
+            color: #94a3b8;
+            margin-left: 4px;
+        }
+
+        .player-badge .score-val {
+            color: #fbbf24;
+            font-weight: 700;
+            min-width: 20px;
+            display: inline-block;
+            text-align: center;
+        }
+
+        /* ----- JOIN SECTION ----- */
+        .join-section {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+        }
+
+        .join-section input {
+            flex: 1;
+            min-width: 160px;
+            padding: 14px 20px;
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.05);
+            color: #f0f4ff;
+            font-size: 16px;
+            outline: none;
+            transition: border 0.2s, box-shadow 0.2s;
+        }
+
+        .join-section input::placeholder {
+            color: #6b7a9e;
+        }
+
+        .join-section input:focus {
+            border-color: #fbbf24;
+            box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
+        }
+
+        .join-section input:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn {
+            padding: 14px 32px;
+            border-radius: 40px;
+            border: none;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #0b0e1a;
+            box-shadow: 0 4px 16px rgba(251, 191, 36, 0.25);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: scale(1.02);
+            box-shadow: 0 6px 24px rgba(251, 191, 36, 0.35);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.07);
+            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.13);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: rgba(239, 68, 68, 0.25);
+        }
+
+        .btn-success {
+            background: rgba(52, 211, 153, 0.15);
+            color: #6ee7b7;
+            border: 1px solid rgba(52, 211, 153, 0.2);
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: rgba(52, 211, 153, 0.25);
+        }
+
+        /* ----- GAME AREA (visible after join) ----- */
+        .game-area {
+            display: none;
+            animation: fadeUp 0.4s ease-out;
+        }
+
+        .game-area.active {
+            display: block;
+        }
+
+        @keyframes fadeUp {
+            0% {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ----- TOP STATS ROW ----- */
+        .stats-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 28px;
+            justify-content: center;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 24px;
+            padding: 16px 28px;
+            text-align: center;
+            flex: 1;
+            min-width: 120px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-card .label {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #94a3b8;
+            margin-bottom: 4px;
+        }
+
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #f0f4ff;
+        }
+
+        .stat-card .value.gold {
+            color: #fbbf24;
+        }
+        .stat-card .value.green {
+            color: #34d399;
+        }
+        .stat-card .value.blue {
+            color: #60a5fa;
+        }
+
+        /* ----- CLICK BUTTON ----- */
+        .click-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 10px 0 30px;
+        }
+
+        .click-btn {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: none;
+            background: radial-gradient(circle at 30% 30%, #fbbf24, #d97706);
+            color: #0b0e1a;
+            font-size: 28px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 12px 40px rgba(251, 191, 36, 0.3),
+                inset 0 -4px 12px rgba(0, 0, 0, 0.2),
+                inset 0 4px 12px rgba(255, 255, 255, 0.3);
+            transition: all 0.08s ease;
+            user-select: none;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.2;
+        }
+
+        .click-btn:hover:not(:disabled) {
+            transform: scale(1.02);
+            box-shadow: 0 16px 50px rgba(251, 191, 36, 0.4),
+                inset 0 -4px 12px rgba(0, 0, 0, 0.2),
+                inset 0 4px 12px rgba(255, 255, 255, 0.3);
+        }
+
+        .click-btn:active:not(:disabled) {
+            transform: scale(0.94);
+            box-shadow: 0 4px 20px rgba(251, 191, 36, 0.2),
+                inset 0 -2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .click-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .click-btn .sub {
+            font-size: 14px;
+            font-weight: 400;
+            opacity: 0.8;
+            margin-top: 2px;
+        }
+
+        /* click ripple effect */
+        .click-btn .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            transform: scale(0);
+            animation: rippleAnim 0.6s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes rippleAnim {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        /* ----- LEADERBOARD ----- */
+        .leaderboard-section {
+            margin-top: 8px;
+        }
+
+        .leaderboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .leaderboard-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .leaderboard-header h2 .count {
+            font-size: 14px;
+            font-weight: 400;
+            color: #94a3b8;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 2px 12px;
+            border-radius: 100px;
+        }
+
+        .leaderboard-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .leaderboard-actions .btn {
+            padding: 6px 14px;
+            font-size: 13px;
+            border-radius: 30px;
+        }
+
+        /* ----- PLAYER LIST ----- */
+        .player-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 320px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .player-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .player-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+        }
+
+        .player-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 18px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            transition: background 0.2s;
+        }
+
+        .player-row:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .player-row .rank {
+            font-size: 15px;
+            font-weight: 700;
+            color: #94a3b8;
+            min-width: 28px;
+            text-align: center;
+        }
+
+        .player-row .rank.gold {
+            color: #fbbf24;
+        }
+        .player-row .rank.silver {
+            color: #94a3b8;
+        }
+        .player-row .rank.bronze {
+            color: #d97706;
+        }
+
+        .player-row .p-name {
+            flex: 1;
+            font-weight: 500;
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .player-row .p-name .you-badge {
+            font-size: 10px;
+            background: rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+            padding: 1px 10px;
+            border-radius: 100px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        .player-row .p-score {
+            font-weight: 700;
+            font-size: 18px;
+            color: #f0f4ff;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .player-row .p-score.gold {
+            color: #fbbf24;
+        }
+
+        .player-row.empty {
+            color: #6b7a9e;
+            justify-content: center;
+            font-style: italic;
+            padding: 24px 18px;
+        }
+
+        /* ----- RESPONSIVE ----- */
+        @media (max-width: 600px) {
+            .game-container {
+                padding: 24px 18px 30px;
+                border-radius: 32px;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+
+            .click-btn {
+                width: 150px;
+                height: 150px;
+                font-size: 22px;
+            }
+
+            .stat-card {
+                padding: 12px 16px;
+                min-width: 80px;
+            }
+
+            .stat-card .value {
+                font-size: 24px;
+            }
+
+            .player-row {
+                padding: 8px 12px;
+                gap: 10px;
+            }
+
+            .join-section input {
+                padding: 12px 16px;
+                font-size: 15px;
+            }
+
+            .btn {
+                padding: 12px 20px;
+                font-size: 14px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .click-btn {
+                width: 120px;
+                height: 120px;
+                font-size: 18px;
+            }
+            .stat-card .value {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="game-container" id="app">
+
+        <!-- ===== HEADER ===== -->
+        <div class="header">
+            <h1>
+                <span>⚡</span> Click Race
+            </h1>
+            <div class="player-badge" id="playerBadge" style="display:none;">
+                <span class="dot"></span>
+                <span class="name" id="badgeName">—</span>
+                <span class="score-label">·</span>
+                <span class="score-val" id="badgeScore">0</span>
+            </div>
+        </div>
+
+        <!-- ===== JOIN SECTION ===== -->
+        <div class="join-section" id="joinSection">
+            <input
+            type="text"
+            id="nameInput"
+            placeholder="Enter your name…"
+            maxlength="20"
+            autofocus
+            />
+            <button class="btn btn-primary" id="joinBtn">🚀 Join Game</button>
+        </div>
+
+        <!-- ===== GAME AREA ===== -->
+        <div class="game-area" id="gameArea">
+
+            <!-- Stats -->
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="label">👥 Players</div>
+                    <div class="value blue" id="playerCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">🖱️ Total Clicks</div>
+                    <div class="value gold" id="totalClicks">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">🏆 Your Rank</div>
+                    <div class="value green" id="yourRank">—</div>
+                </div>
+            </div>
+
+            <!-- Click Button -->
+            <div class="click-area">
+                <button class="click-btn" id="clickBtn" disabled>
+                    <span id="clickBtnLabel">CLICK</span>
+                    <span class="sub" id="clickBtnSub">+1</span>
+                </button>
+            </div>
+
+            <!-- Leaderboard -->
+            <div class="leaderboard-section">
+                <div class="leaderboard-header">
+                    <h2>
+                        🏅 Leaderboard
+                        <span class="count" id="leaderCount">0</span>
+                    </h2>
+                    <div class="leaderboard-actions">
+                        <button class="btn btn-danger" id="resetBtn" title="Reset all scores">🔄 Reset</button>
+                    </div>
+                </div>
+                <div class="player-list" id="playerList">
+                    <div class="player-row empty">Waiting for players…</div>
+                </div>
+            </div>
+
+        </div>
+        <!-- /game-area -->
+
+    </div>
+    <!-- /game-container -->
+
+    <!-- ============================================================ -->
+    <!-- ===== JAVASCRIPT (MODULE) ===== -->
+    <script type="module">
+        // ----- IMPORTS -----
+        import { initializeApp } from "firebase/app";
+        import {
+            getFirestore,
+            collection,
+            doc,
+            onSnapshot,
+            updateDoc,
+            setDoc,
+            deleteDoc,
+            increment,
+            query,
+            orderBy,
+            getDocs,
+            writeBatch,
+            serverTimestamp,
+            getDoc,
+            runTransaction,
+        } from "firebase/firestore";
+
+        // ----- FIREBASE CONFIG (YOURS) -----
+        const firebaseConfig = {
+            apiKey: "AIzaSyCRfjbV4_ogooxnHFFM5UEPyNzEBtwapPw",
+            authDomain: "multi-player-219e6.firebaseapp.com",
+            projectId: "multi-player-219e6",
+            storageBucket: "multi-player-219e6.firebasestorage.app",
+            messagingSenderId: "602517623504",
+            appId: "1:602517623504:web:dbaeed3fad6b8e0ad4c4d5"
+        };
+
+        // ----- INIT FIREBASE -----
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // ----- CONSTANTS -----
+        const PLAYERS_COLLECTION = "players";
+
+        // ----- DOM REFS -----
+        const joinSection = document.getElementById("joinSection");
+        const nameInput = document.getElementById("nameInput");
+        const joinBtn = document.getElementById("joinBtn");
+
+        const gameArea = document.getElementById("gameArea");
+        const clickBtn = document.getElementById("clickBtn");
+        const clickBtnLabel = document.getElementById("clickBtnLabel");
+        const clickBtnSub = document.getElementById("clickBtnSub");
+
+        const playerCount = document.getElementById("playerCount");
+        const totalClicks = document.getElementById("totalClicks");
+        const yourRank = document.getElementById("yourRank");
+
+        const playerList = document.getElementById("playerList");
+        const leaderCount = document.getElementById("leaderCount");
+
+        const badgeName = document.getElementById("badgeName");
+        const badgeScore = document.getElementById("badgeScore");
+        const playerBadge = document.getElementById("playerBadge");
+
+        const resetBtn = document.getElementById("resetBtn");
+
+        // ----- STATE -----
+        let myPlayerId = null; // doc ID in Firestore
+        let myName = "";
+        let myScore = 0;
+        let isJoined = false;
+
+        // all players from Firestore: map id -> { name, score, createdAt? }
+        let playersMap = new Map();
+        // sorted array for leaderboard
+        let sortedPlayers = [];
+
+        // unsubscriber for real‑time listener
+        let unsubPlayers = null;
+
+        // ----- HELPERS -----
+        function generateId() {
+            // simple client‑side id (Firestore will use this as doc id)
+            return `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        }
+
+        // ----- RENDER LEADERBOARD -----
+        function renderLeaderboard() {
+            // Build sorted array (descending score)
+            const arr = Array.from(playersMap.entries())
+                .map(([id, data]) => ({ id, ...data }))
+                .sort((a, b) => (b.score || 0) - (a.score || 0));
+
+            sortedPlayers = arr;
+            leaderCount.textContent = arr.length;
+
+            if (arr.length === 0) {
+                playerList.innerHTML = `<div class="player-row empty">No players yet — be the first! 🚀</div>`;
+                return;
+            }
+
+            let html = "";
+            arr.forEach((p, index) => {
+                const rank = index + 1;
+                let rankClass = "";
+                if (rank === 1) rankClass = "gold";
+                else if (rank === 2) rankClass = "silver";
+                else if (rank === 3) rankClass = "bronze";
+
+                const isYou = p.id === myPlayerId;
+                const nameDisplay = p.name || "Anonymous";
+                const scoreDisplay = p.score || 0;
+
+                html += `
+                        <div class="player-row">
+                            <span class="rank ${rankClass}">#${rank}</span>
+                            <span class="p-name">
+                                ${nameDisplay}
+                                ${isYou ? `<span class="you-badge">YOU</span>` : ""}
+                            </span>
+                            <span class="p-score ${rank === 1 ? 'gold' : ''}">${scoreDisplay}</span>
+                        </div>
+                    `;
+            });
+
+            playerList.innerHTML = html;
+
+            // Update "Your Rank"
+            const myIndex = arr.findIndex(p => p.id === myPlayerId);
+            if (myIndex !== -1) {
+                yourRank.textContent = `#${myIndex + 1}`;
+            } else {
+                yourRank.textContent = "—";
+            }
+
+            // Update badge
+            if (myPlayerId && playersMap.has(myPlayerId)) {
+                const me = playersMap.get(myPlayerId);
+                badgeName.textContent = me.name || myName;
+                badgeScore.textContent = me.score || 0;
+                myScore = me.score || 0;
+                playerBadge.style.display = "flex";
+            } else {
+                playerBadge.style.display = "none";
+            }
+
+            // Update total clicks
+            const total = arr.reduce((sum, p) => sum + (p.score || 0), 0);
+            totalClicks.textContent = total;
+            playerCount.textContent = arr.length;
+
+            // Enable/disable click button
+            clickBtn.disabled = !isJoined || !myPlayerId;
+        }
+
+        // ----- SETUP REAL‑TIME LISTENER -----
+        function startListening() {
+            if (unsubPlayers) unsubPlayers();
+
+            const q = query(collection(db, PLAYERS_COLLECTION));
+            unsubPlayers = onSnapshot(q, (snapshot) => {
+                // Clear map
+                playersMap.clear();
+
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    playersMap.set(docSnap.id, {
+                        name: data.name || "Anonymous",
+                        score: data.score || 0,
+                        createdAt: data.createdAt || null,
+                    });
+                });
+
+                renderLeaderboard();
+            }, (error) => {
+                console.error("Firestore listener error:", error);
+                // If we lose connection, show a message
+                playerList.innerHTML =
+                    `<div class="player-row empty">⚠️ Connection lost. Reconnecting…</div>`;
+            });
+        }
+
+        // ----- JOIN GAME -----
+        async function joinGame(name) {
+            if (!name || name.trim() === "") {
+                nameInput.focus();
+                return;
+            }
+            const trimmed = name.trim();
+
+            // Disable UI during join
+            joinBtn.disabled = true;
+            nameInput.disabled = true;
+            joinBtn.textContent = "Joining…";
+
+            try {
+                // Generate a unique ID for this player
+                const newId = generateId();
+                const playerRef = doc(db, PLAYERS_COLLECTION, newId);
+
+                // Check if doc already exists (extremely unlikely with our id scheme)
+                const snap = await getDoc(playerRef);
+                if (snap.exists()) {
+                    // collision – try again with a new id
+                    const retryId = generateId();
+                    const retryRef = doc(db, PLAYERS_COLLECTION, retryId);
+                    await setDoc(retryRef, {
+                        name: trimmed,
+                        score: 0,
+                        createdAt: serverTimestamp(),
+                    });
+                    myPlayerId = retryId;
+                } else {
+                    await setDoc(playerRef, {
+                        name: trimmed,
+                        score: 0,
+                        createdAt: serverTimestamp(),
+                    });
+                    myPlayerId = newId;
+                }
+
+                myName = trimmed;
+                myScore = 0;
+                isJoined = true;
+
+                // Update UI
+                joinSection.style.display = "none";
+                gameArea.classList.add("active");
+
+                // Start real‑time listener
+                startListening();
+
+                // Enable click button (listener will enable it after render)
+                // But we also set it here as a fallback
+                clickBtn.disabled = false;
+
+                // Focus the click button for keyboard access
+                clickBtn.focus();
+
+            } catch (err) {
+                console.error("Join error:", err);
+                alert("Could not join game. Please check your network and try again.");
+                joinBtn.disabled = false;
+                nameInput.disabled = false;
+                joinBtn.textContent = "🚀 Join Game";
+            }
+        }
+
+        // ----- HANDLE CLICK -----
+        async function handleClick() {
+            if (!isJoined || !myPlayerId) return;
+            if (clickBtn.disabled) return;
+
+            // Disable button briefly to prevent double‑click spam
+            clickBtn.disabled = true;
+            clickBtnLabel.textContent = "💥";
+
+            try {
+                const playerRef = doc(db, PLAYERS_COLLECTION, myPlayerId);
+                await updateDoc(playerRef, {
+                    score: increment(1),
+                });
+                // Score will update via the listener
+            } catch (err) {
+                console.error("Click error:", err);
+                // Re-enable on error
+                clickBtn.disabled = false;
+                clickBtnLabel.textContent = "CLICK";
+            }
+
+            // Re-enable after a tiny delay (listener will also re-enable)
+            setTimeout(() => {
+                if (isJoined && myPlayerId) {
+                    clickBtn.disabled = false;
+                    clickBtnLabel.textContent = "CLICK";
+                }
+            }, 120);
+        }
+
+        // ----- RESET GAME (admin action) -----
+        async function resetGame() {
+            if (!confirm("⚠️ Reset all scores for everyone? This cannot be undone.")) return;
+
+            resetBtn.disabled = true;
+            resetBtn.textContent = "⏳ Resetting…";
+
+            try {
+                // Get all player docs
+                const snapshot = await getDocs(collection(db, PLAYERS_COLLECTION));
+                const batch = writeBatch(db);
+
+                snapshot.forEach((docSnap) => {
+                    const ref = doc(db, PLAYERS_COLLECTION, docSnap.id);
+                    batch.update(ref, { score: 0 });
+                });
+
+                await batch.commit();
+                // Listener will update UI automatically
+            } catch (err) {
+                console.error("Reset error:", err);
+                alert("Failed to reset. Try again.");
+            } finally {
+                resetBtn.disabled = false;
+                resetBtn.textContent = "🔄 Reset";
+            }
+        }
+
+        // ----- LEAVE GAME (clean up) -----
+        async function leaveGame() {
+            if (!myPlayerId) return;
+
+            try {
+                await deleteDoc(doc(db, PLAYERS_COLLECTION, myPlayerId));
+            } catch (err) {
+                console.warn("Could not delete player doc:", err);
+            }
+
+            // Unsubscribe listener
+            if (unsubPlayers) {
+                unsubPlayers();
+                unsubPlayers = null;
+            }
+
+            // Reset state
+            isJoined = false;
+            myPlayerId = null;
+            myName = "";
+            myScore = 0;
+            playersMap.clear();
+
+            // UI
+            gameArea.classList.remove("active");
+            joinSection.style.display = "flex";
+            nameInput.disabled = false;
+            nameInput.value = "";
+            joinBtn.disabled = false;
+            joinBtn.textContent = "🚀 Join Game";
+            playerBadge.style.display = "none";
+            clickBtn.disabled = true;
+            clickBtnLabel.textContent = "CLICK";
+            yourRank.textContent = "—";
+            totalClicks.textContent = "0";
+            playerCount.textContent = "0";
+            playerList.innerHTML = `<div class="player-row empty">Waiting for players…</div>`;
+
+            nameInput.focus();
+        }
+
+        // ----- KEYBOARD SUPPORT -----
+        document.addEventListener("keydown", (e) => {
+            // Space or Enter on the click button
+            if (e.key === " " || e.key === "Enter") {
+                if (document.activeElement === clickBtn) {
+                    e.preventDefault();
+                    handleClick();
+                }
+            }
+            // Escape to leave
+            if (e.key === "Escape" && isJoined) {
+                if (confirm("Leave the game?")) {
+                    leaveGame();
+                }
+            }
+        });
+
+        // ----- EVENT LISTENERS -----
+        joinBtn.addEventListener("click", () => {
+            joinGame(nameInput.value);
+        });
+
+        nameInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                joinGame(nameInput.value);
+            }
+        });
+
+        clickBtn.addEventListener("click", handleClick);
+
+        resetBtn.addEventListener("click", resetGame);
+
+        // ----- AUTO‑JOIN FROM LOCAL STORAGE? (optional) -----
+        // We don't auto-join to keep it clean.
+
+        // ----- INITIAL STATE -----
+        // Show join section, hide game
+        gameArea.classList.remove("active");
+        joinSection.style.display = "flex";
+        nameInput.focus();
+
+        // Set up a dummy listener to show "no players" initially
+        // (We'll start listening after join)
+
+        console.log("🔥 Multiplayer Click Race loaded — ready to join!");
+        console.log("ℹ️  Firestore project:", firebaseConfig.projectId);
+
+        // Expose leave for debugging (optional)
+        window.__leaveGame = leaveGame;
+
+        // ----- HANDLE PAGE UNLOAD (clean up) -----
+        window.addEventListener("beforeunload", () => {
+            if (unsubPlayers) unsubPlayers();
+            // We don't delete the player doc on unload because they might come back.
+            // But we could add a cleanup with onDisconnect if needed.
+            // For simplicity, we keep the doc.
+        });
+
+        // ----- HELPER: if listener dies, we re-subscribe -----
+        // The onSnapshot will automatically reconnect, so we're good.
+
+        console.log("✅ Game ready! Enter your name and click 'Join Game'.");
+    </script>
+
+</body>
+</html>
