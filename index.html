@@ -4,799 +4,525 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>🌌 Dream City Fly</title>
-    <!-- ===== FIREBASE & THREE IMPORTS ===== -->
     <script type="importmap">
-        {
-            "imports": {
-                "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
-                "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js",
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
-            }
+    {
+        "imports": {
+            "firebase/app":       "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js",
+            "three":              "https://unpkg.com/three@0.160.0/build/three.module.js"
         }
+    }
     </script>
-
     <style>
-        /* ----- RESET ----- */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            overflow: hidden;
-            background: #0a0e1a;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            touch-action: none;
-        }
-        canvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { overflow:hidden; background:#0a0e1a; font-family:'Segoe UI',system-ui,sans-serif; touch-action:none; }
+        canvas { display:block; width:100vw; height:100vh; }
 
-        /* ----- JOIN OVERLAY ----- */
+        /* JOIN */
         #joinOverlay {
-            position: fixed;
-            inset: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: rgba(10, 14, 26, 0.85);
-            backdrop-filter: blur(16px);
-            z-index: 100;
-            padding: 24px;
-            transition: opacity 0.6s ease;
+            position:fixed; inset:0; display:flex; flex-direction:column;
+            align-items:center; justify-content:center;
+            background:rgba(10,14,26,0.88); backdrop-filter:blur(16px);
+            z-index:100; padding:24px; transition:opacity 0.5s;
         }
-        #joinOverlay.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
+        #joinOverlay.hidden { opacity:0; pointer-events:none; }
         #joinOverlay h1 {
-            font-size: 2.6rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #a78bfa, #60a5fa);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 12px;
+            font-size:2.6rem; font-weight:700;
+            background:linear-gradient(135deg,#a78bfa,#60a5fa);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+            margin-bottom:10px;
         }
-        #joinOverlay p {
-            color: #94a3b8;
-            margin-bottom: 28px;
-            font-size: 1.1rem;
-            text-align: center;
-            max-width: 320px;
+        #joinOverlay p { color:#94a3b8; margin-bottom:26px; font-size:1rem; text-align:center; max-width:300px; }
+        #nameInput {
+            width:80%; max-width:280px; padding:14px 20px; border-radius:60px;
+            border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06);
+            color:#f0f4ff; font-size:1.1rem; text-align:center; outline:none; margin-bottom:18px;
         }
-        #joinOverlay input {
-            width: 80%;
-            max-width: 300px;
-            padding: 16px 20px;
-            border-radius: 60px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(255, 255, 255, 0.05);
-            color: #f0f4ff;
-            font-size: 1.1rem;
-            text-align: center;
-            outline: none;
-            margin-bottom: 20px;
+        #nameInput:focus { border-color:#a78bfa; }
+        #joinBtn {
+            padding:14px 44px; border-radius:60px; border:none;
+            background:linear-gradient(135deg,#a78bfa,#7c3aed); color:#fff;
+            font-size:1.15rem; font-weight:600; cursor:pointer;
+            box-shadow:0 8px 28px rgba(124,58,237,0.35);
+            transition:transform 0.12s, opacity 0.2s;
         }
-        #joinOverlay input:focus {
-            border-color: #a78bfa;
-        }
-        #joinOverlay button {
-            padding: 16px 48px;
-            border-radius: 60px;
-            border: none;
-            background: linear-gradient(135deg, #a78bfa, #7c3aed);
-            color: #fff;
-            font-size: 1.2rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.15s, box-shadow 0.2s;
-            box-shadow: 0 8px 32px rgba(124, 58, 237, 0.3);
-        }
-        #joinOverlay button:active {
-            transform: scale(0.95);
-        }
-        #joinOverlay .error {
-            color: #f87171;
-            margin-top: 12px;
-            font-size: 0.9rem;
-            max-width: 280px;
-            text-align: center;
-        }
+        #joinBtn:active { transform:scale(0.95); }
+        #joinBtn:disabled { opacity:0.5; cursor:not-allowed; }
+        #joinError { color:#f87171; margin-top:12px; font-size:0.88rem; max-width:280px; text-align:center; min-height:20px; }
 
-        /* ----- LOADING OVERLAY (inside join) ----- */
+        /* LOADING */
         #loadingOverlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(10, 14, 26, 0.7);
-            backdrop-filter: blur(6px);
-            z-index: 200;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            color: #e2e8f0;
+            position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+            flex-direction:column; background:rgba(10,14,26,0.75); backdrop-filter:blur(6px);
+            z-index:200; color:#e2e8f0;
         }
-        #loadingOverlay.active {
-            display: flex;
-        }
+        #loadingOverlay.active { display:flex; }
         .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-top: 4px solid #a78bfa;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
+            border:4px solid rgba(255,255,255,0.1); border-top:4px solid #a78bfa;
+            border-radius:50%; width:48px; height:48px;
+            animation:spin 0.9s linear infinite; margin-bottom:18px;
         }
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-        #loadingStatus {
-            font-size: 1rem;
-            color: #c4b5fd;
-        }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        #loadingStatus { font-size:0.95rem; color:#c4b5fd; }
 
-        /* ----- JOYSTICKS ----- */
+        /* JOYSTICKS */
         .joystick {
-            position: fixed;
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(4px);
-            z-index: 50;
-            touch-action: none;
-            user-select: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
-            transition: opacity 0.3s;
+            position:fixed; width:110px; height:110px; border-radius:50%;
+            background:rgba(255,255,255,0.05); border:2px solid rgba(255,255,255,0.1);
+            backdrop-filter:blur(4px); z-index:50; touch-action:none; user-select:none;
+            display:flex; align-items:center; justify-content:center;
+            box-shadow:0 0 24px rgba(0,0,0,0.4);
         }
         .joystick .knob {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: radial-gradient(circle at 30% 30%, #a78bfa, #7c3aed);
-            pointer-events: none;
-            transition: transform 0.05s;
-            box-shadow: 0 4px 16px rgba(124, 58, 237, 0.4);
+            width:36px; height:36px; border-radius:50%;
+            background:radial-gradient(circle at 30% 30%,#a78bfa,#7c3aed);
+            pointer-events:none; box-shadow:0 4px 14px rgba(124,58,237,0.4);
+            position:relative;
         }
-        #leftStick {
-            bottom: 40px;
-            left: 30px;
-        }
-        #rightStick {
-            bottom: 40px;
-            right: 30px;
-        }
+        #leftStick  { bottom:36px; left:24px; }
+        #rightStick { bottom:36px; right:24px; }
         .stick-label {
-            position: absolute;
-            color: rgba(255, 255, 255, 0.3);
-            font-size: 11px;
-            letter-spacing: 1px;
-            bottom: -24px;
-            width: 100%;
-            text-align: center;
-            pointer-events: none;
+            position:absolute; color:rgba(255,255,255,0.28); font-size:10px;
+            letter-spacing:1px; bottom:-22px; width:100%; text-align:center; pointer-events:none;
         }
 
-        /* ----- HUD ----- */
+        /* HUD */
         #hud {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            right: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: #e2e8f0;
-            font-size: 0.9rem;
-            z-index: 60;
-            pointer-events: none;
-            flex-wrap: wrap;
-            gap: 8px;
+            position:fixed; top:18px; left:18px; right:18px; display:none;
+            justify-content:space-between; align-items:center;
+            color:#e2e8f0; font-size:0.88rem; z-index:60; pointer-events:none;
         }
-        #hud .left,
-        #hud .right {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(8px);
-            padding: 8px 16px;
-            border-radius: 40px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+        .hud-pill {
+            display:flex; align-items:center; gap:10px;
+            background:rgba(0,0,0,0.45); backdrop-filter:blur(8px);
+            padding:7px 15px; border-radius:40px; border:1px solid rgba(255,255,255,0.06);
         }
-        #hud .player-count {
-            color: #94a3b8;
-        }
-        #hud .player-count span {
-            color: #f0f4ff;
-            font-weight: 600;
-        }
-        #hud .nearby {
-            color: #a78bfa;
-        }
-        #hud .mic {
-            color: #34d399;
-            font-size: 1.2rem;
-        }
-        #hud .mic.off {
-            color: #ef4444;
-        }
+        #playerCount, #nearbyCount { font-weight:600; color:#f0f4ff; }
 
-        @media (max-width: 600px) {
-            .joystick {
-                width: 90px;
-                height: 90px;
-            }
-            .joystick .knob {
-                width: 30px;
-                height: 30px;
-            }
-            #leftStick {
-                bottom: 24px;
-                left: 16px;
-            }
-            #rightStick {
-                bottom: 24px;
-                right: 16px;
-            }
-            #hud {
-                font-size: 0.75rem;
-                top: 12px;
-            }
-            #hud .left,
-            #hud .right {
-                padding: 4px 12px;
-            }
-            #joinOverlay h1 {
-                font-size: 2rem;
-            }
+        @media(max-width:600px){
+            .joystick { width:88px; height:88px; }
+            .joystick .knob { width:28px; height:28px; }
+            #leftStick { bottom:20px; left:14px; }
+            #rightStick { bottom:20px; right:14px; }
         }
     </style>
 </head>
-
 <body>
 
-    <!-- ===== JOIN OVERLAY ===== -->
-    <div id="joinOverlay">
-        <h1>🌌 Dream City</h1>
-        <p>Fly through the neon sky &amp; meet others with spatial voice</p>
-        <input type="text" id="nameInput" placeholder="Enter your dream name..." maxlength="16" autofocus />
-        <button id="joinBtn">🚀 Launch</button>
-        <div id="joinError" class="error"></div>
-    </div>
+<!-- JOIN -->
+<div id="joinOverlay">
+    <h1>🌌 Dream City</h1>
+    <p>Fly through the neon sky &amp; meet others in 3D space</p>
+    <input id="nameInput" type="text" placeholder="Enter your dream name…" maxlength="16" autocomplete="off" />
+    <button id="joinBtn">🚀 Launch</button>
+    <div id="joinError"></div>
+</div>
 
-    <!-- ===== LOADING OVERLAY ===== -->
-    <div id="loadingOverlay">
-        <div class="spinner"></div>
-        <div id="loadingStatus">Joining the dream…</div>
-    </div>
+<!-- LOADING -->
+<div id="loadingOverlay">
+    <div class="spinner"></div>
+    <div id="loadingStatus">Joining the dream…</div>
+</div>
 
-    <!-- ===== JOYSTICKS ===== -->
-    <div class="joystick" id="leftStick">
-        <div class="knob" id="leftKnob"></div>
-        <div class="stick-label">MOVE</div>
-    </div>
-    <div class="joystick" id="rightStick">
-        <div class="knob" id="rightKnob"></div>
-        <div class="stick-label">LOOK</div>
-    </div>
+<!-- JOYSTICKS -->
+<div class="joystick" id="leftStick">
+    <div class="knob" id="leftKnob"></div>
+    <div class="stick-label">MOVE</div>
+</div>
+<div class="joystick" id="rightStick">
+    <div class="knob" id="rightKnob"></div>
+    <div class="stick-label">LOOK</div>
+</div>
 
-    <!-- ===== HUD ===== -->
-    <div id="hud" style="display:none;">
-        <div class="left">
-            <span class="player-count">👥 <span id="playerCount">0</span></span>
-            <span class="nearby">📡 <span id="nearbyCount">0</span> nearby</span>
-        </div>
-        <div class="right">
-            <span id="micStatus" class="mic">🎙️ ON</span>
-        </div>
-    </div>
+<!-- HUD -->
+<div id="hud">
+    <div class="hud-pill">👥 <span id="playerCount">0</span> online</div>
+    <div class="hud-pill">📡 <span id="nearbyCount">0</span> nearby</div>
+</div>
 
-    <!-- ============================================================ -->
-    <!-- ===== MAIN APPLICATION ===== -->
-    <script type="module">
-        // ----- IMPORTS -----
-        import { initializeApp } from "firebase/app";
-        import {
-            getFirestore,
-            collection,
-            doc,
-            onSnapshot,
-            setDoc,
-            deleteDoc,
-            serverTimestamp,
-            onDisconnect
-        } from "firebase/firestore";
+<script type="module">
+import { initializeApp }       from "firebase/app";
+import {
+    getFirestore, collection, doc,
+    onSnapshot, setDoc, updateDoc, deleteDoc,
+    serverTimestamp
+} from "firebase/firestore";
+import * as THREE from "three";
 
-        import * as THREE from 'three';
+// ── FIREBASE CONFIG ──────────────────────────────────────────────
+const firebaseConfig = {
+    apiKey:            "AIzaSyCRfjbV4_ogooxnHFFM5UEPyNzEBtwapPw",
+    authDomain:        "multi-player-219e6.firebaseapp.com",
+    projectId:         "multi-player-219e6",
+    storageBucket:     "multi-player-219e6.firebasestorage.app",
+    messagingSenderId: "602517623504",
+    appId:             "1:602517623504:web:dbaeed3fad6b8e0ad4c4d5"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
 
-        // ----- FIREBASE CONFIG -----
-        const firebaseConfig = {
-            apiKey: "AIzaSyCRfjbV4_ogooxnHFFM5UEPyNzEBtwapPw",
-            authDomain: "multi-player-219e6.firebaseapp.com",
-            projectId: "multi-player-219e6",
-            storageBucket: "multi-player-219e6.firebasestorage.app",
-            messagingSenderId: "602517623504",
-            appId: "1:602517623504:web:dbaeed3fad6b8e0ad4c4d5"
-        };
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+// ── DOM ──────────────────────────────────────────────────────────
+const joinOverlay    = document.getElementById('joinOverlay');
+const nameInput      = document.getElementById('nameInput');
+const joinBtn        = document.getElementById('joinBtn');
+const joinError      = document.getElementById('joinError');
+const loadingOverlay = document.getElementById('loadingOverlay');
+const loadingStatus  = document.getElementById('loadingStatus');
+const hud            = document.getElementById('hud');
+const playerCountEl  = document.getElementById('playerCount');
+const nearbyCountEl  = document.getElementById('nearbyCount');
 
-        // ----- DOM REFS -----
-        const joinOverlay = document.getElementById('joinOverlay');
-        const nameInput = document.getElementById('nameInput');
-        const joinBtn = document.getElementById('joinBtn');
-        const joinError = document.getElementById('joinError');
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        const loadingStatus = document.getElementById('loadingStatus');
-        const hud = document.getElementById('hud');
-        const playerCountEl = document.getElementById('playerCount');
-        const nearbyCountEl = document.getElementById('nearbyCount');
-        const micStatus = document.getElementById('micStatus');
+// ── THREE.JS SETUP ───────────────────────────────────────────────
+const scene    = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0e1a);
+scene.fog        = new THREE.Fog(0x0a0e1a, 120, 320);
 
-        // ----- THREE.JS SETUP (same as before) -----
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0a0e1a);
-        scene.fog = new THREE.Fog(0x0a0e1a, 100, 300);
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 500);
+camera.position.set(0, 30, 0);
 
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
-        camera.position.set(0, 30, 50);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        document.body.prepend(renderer.domElement);
+// Lights
+scene.add(new THREE.AmbientLight(0x40406b, 0.7));
+const sun = new THREE.DirectionalLight(0xffeedd, 1.6);
+sun.position.set(50, 100, 30);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+const sd = 150;
+Object.assign(sun.shadow.camera, { left:-sd, right:sd, top:sd, bottom:-sd, near:1, far:250 });
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0x8888ff, 0.4);
+fill.position.set(-30, 20, -40);
+scene.add(fill);
 
-        // Lights, city, stars (same as before – abbreviated for brevity)
-        const ambientLight = new THREE.AmbientLight(0x40406b, 0.6);
-        scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffeedd, 1.8);
-        dirLight.position.set(50, 100, 30);
-        dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 1024;
-        dirLight.shadow.mapSize.height = 1024;
-        const d = 150;
-        dirLight.shadow.camera.left = -d;
-        dirLight.shadow.camera.right = d;
-        dirLight.shadow.camera.top = d;
-        dirLight.shadow.camera.bottom = -d;
-        dirLight.shadow.camera.near = 1;
-        dirLight.shadow.camera.far = 250;
-        scene.add(dirLight);
-        const fillLight = new THREE.DirectionalLight(0x8888ff, 0.4);
-        fillLight.position.set(-30, 20, -40);
-        scene.add(fillLight);
+// City
+(function buildCity(){
+    const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(400, 400),
+        new THREE.MeshStandardMaterial({ color:0x1a1f33, roughness:0.8, metalness:0.2 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.5;
+    ground.receiveShadow = true;
+    scene.add(ground);
+    scene.add(new THREE.GridHelper(400, 20, 0x3a4a7a, 0x1e2a4a));
 
-        // City buildings
-        function buildCity() {
-            const groundGeo = new THREE.PlaneGeometry(400, 400);
-            const groundMat = new THREE.MeshStandardMaterial({ color: 0x1a1f33, roughness: 0.8, metalness: 0.2 });
-            const ground = new THREE.Mesh(groundGeo, groundMat);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -0.5;
-            ground.receiveShadow = true;
-            scene.add(ground);
-            const gridHelper = new THREE.GridHelper(400, 20, 0x4a5a8a, 0x2a3a5a);
-            gridHelper.position.y = 0;
-            scene.add(gridHelper);
-            const colors = [0x6a5acd, 0x4a6fa5, 0x3b82f6, 0x8b5cf6, 0x7c3aed];
-            for (let i = 0; i < 120; i++) {
-                const w = 2 + Math.random() * 5;
-                const d = 2 + Math.random() * 5;
-                const h = 4 + Math.random() * 25;
-                const mat = new THREE.MeshStandardMaterial({
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                    emissive: new THREE.Color(colors[Math.floor(Math.random() * colors.length)]).multiplyScalar(0.08),
-                    roughness: 0.5,
-                    metalness: 0.3
-                });
-                const box = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-                const x = (Math.random() - 0.5) * 300;
-                const z = (Math.random() - 0.5) * 300;
-                if (Math.abs(x) < 25 && Math.abs(z) < 25) continue;
-                box.position.set(x, h / 2, z);
-                box.castShadow = true;
-                box.receiveShadow = true;
-                scene.add(box);
-                if (h > 8 && Math.random() > 0.6) {
-                    const glow = new THREE.Mesh(
-                        new THREE.BoxGeometry(0.4, 0.4, 0.4),
-                        new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xfbbf24, emissiveIntensity: 0.5 })
-                    );
-                    glow.position.set(x + (Math.random() - 0.5) * w * 0.6, 2 + Math.random() * (h - 4), z + (Math.random() -
-                        0.5) * d * 0.6);
-                    scene.add(glow);
-                }
-            }
-        }
-        buildCity();
-
-        function addStars() {
-            const starsGeo = new THREE.BufferGeometry();
-            const count = 2000;
-            const pos = new Float32Array(count * 3);
-            for (let i = 0; i < count * 3; i++) {
-                pos[i] = (Math.random() - 0.5) * 600;
-                if (i % 3 === 1) pos[i] = Math.random() * 150 + 20;
-            }
-            starsGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-            const starsMat = new THREE.PointsMaterial({ color: 0x8888ff, size: 0.6, transparent: true, opacity: 0.8 });
-            const stars = new THREE.Points(starsGeo, starsMat);
-            scene.add(stars);
-        }
-        addStars();
-
-        // Player avatar
-        const playerGroup = new THREE.Group();
-        const sphereGeo = new THREE.SphereGeometry(1.2, 16, 16);
-        const sphereMat = new THREE.MeshStandardMaterial({
-            color: 0xa78bfa,
-            emissive: 0x7c3aed,
-            emissiveIntensity: 0.3,
-            roughness: 0.2,
-            metalness: 0.1
-        });
-        const avatar = new THREE.Mesh(sphereGeo, sphereMat);
-        avatar.castShadow = true;
-        playerGroup.add(avatar);
-        const ringGeo = new THREE.TorusGeometry(1.8, 0.08, 8, 24);
-        const ringMat = new THREE.MeshStandardMaterial({
-            color: 0x60a5fa,
-            emissive: 0x3b82f6,
-            emissiveIntensity: 0.4,
-            transparent: true,
-            opacity: 0.7
-        });
-        const ring = new THREE.Mesh(ringGeo, ringMat);
-        ring.rotation.x = Math.PI / 2;
-        playerGroup.add(ring);
-        scene.add(playerGroup);
-
-        // Remote players map
-        const remotePlayers = new Map();
-
-        // Flight controls
-        const velocity = new THREE.Vector3(0, 0, 0);
-        const maxSpeed = 0.6;
-        const thrust = 0.08;
-        const damping = 0.96;
-        const leftStick = { x: 0, y: 0 };
-        const rightStick = { x: 0, y: 0 };
-        const euler = new THREE.Euler(0, 0, 0, 'YXZ');
-        const targetRotation = new THREE.Euler(0, 0, 0, 'YXZ');
-
-        // Joystick setup (same as before – abbreviated)
-        function setupJoystick(element, knob, callback) {
-            let active = false;
-            const rect = element.getBoundingClientRect();
-            const centerX = rect.width / 2;
-            const centerY = rect.height / 2;
-            const radius = rect.width / 2 - 10;
-
-            function handleMove(clientX, clientY) {
-                const dx = clientX - rect.left - centerX;
-                const dy = clientY - rect.top - centerY;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                const maxDist = Math.min(radius, dist);
-                const angle = Math.atan2(dy, dx);
-                const normX = Math.cos(angle) * (dist > 0 ? Math.min(1, maxDist / radius) : 0);
-                const normY = Math.sin(angle) * (dist > 0 ? Math.min(1, maxDist / radius) : 0);
-                knob.style.transform = `translate(${normX * radius}px, ${normY * radius}px)`;
-                callback(normX, -normY);
-            }
-
-            function reset() {
-                active = false;
-                knob.style.transform = 'translate(0,0)';
-                callback(0, 0);
-            }
-
-            element.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                const touch = e.touches[0];
-                if (touch) {
-                    active = true;
-                    handleMove(touch.clientX, touch.clientY);
-                }
-            }, { passive: false });
-
-            element.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-                if (!active) return;
-                const touch = e.touches[0];
-                if (touch) handleMove(touch.clientX, touch.clientY);
-            }, { passive: false });
-
-            element.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                reset();
-            }, { passive: false });
-
-            element.addEventListener('touchcancel', (e) => {
-                e.preventDefault();
-                reset();
-            }, { passive: false });
-
-            let mouseDown = false;
-            element.addEventListener('mousedown', (e) => {
-                mouseDown = true;
-                handleMove(e.clientX, e.clientY);
-            });
-            window.addEventListener('mousemove', (e) => {
-                if (mouseDown) handleMove(e.clientX, e.clientY);
-            });
-            window.addEventListener('mouseup', () => {
-                if (mouseDown) { mouseDown = false;
-                    reset(); }
-            });
-        }
-
-        setupJoystick(
-            document.getElementById('leftStick'),
-            document.getElementById('leftKnob'),
-            (x, y) => { leftStick.x = x;
-                leftStick.y = y; }
+    const palette = [0x6a5acd, 0x4a6fa5, 0x3b82f6, 0x8b5cf6, 0x7c3aed];
+    for (let i = 0; i < 130; i++) {
+        const w = 2 + Math.random() * 5;
+        const d = 2 + Math.random() * 5;
+        const h = 4 + Math.random() * 28;
+        const x = (Math.random() - 0.5) * 300;
+        const z = (Math.random() - 0.5) * 300;
+        if (Math.abs(x) < 25 && Math.abs(z) < 25) continue;
+        const col = palette[Math.floor(Math.random() * palette.length)];
+        const box = new THREE.Mesh(
+            new THREE.BoxGeometry(w, h, d),
+            new THREE.MeshStandardMaterial({
+                color: col,
+                emissive: new THREE.Color(col).multiplyScalar(0.07),
+                roughness: 0.5, metalness: 0.3
+            })
         );
-        setupJoystick(
-            document.getElementById('rightStick'),
-            document.getElementById('rightKnob'),
-            (x, y) => { rightStick.x = x;
-                rightStick.y = y; }
-        );
-
-        // ----- GAME STATE -----
-        let myPlayerId = null;
-        let myName = '';
-        let isJoined = false;
-        let firebaseUnsub = null;
-        let posInterval = null;
-
-        // ----- JOIN FUNCTION (with loading & error handling) -----
-        async function joinGame(name) {
-            const trimmed = name.trim();
-            if (!trimmed) {
-                joinError.textContent = 'Please enter a name.';
-                return;
-            }
-
-            // Show loading overlay
-            loadingOverlay.classList.add('active');
-            loadingStatus.textContent = 'Creating your dream avatar…';
-            joinBtn.disabled = true;
-            joinError.textContent = '';
-
-            try {
-                // Generate unique ID
-                myPlayerId = `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-                myName = trimmed;
-
-                // Create player document
-                const ref = doc(db, 'players', myPlayerId);
-                await setDoc(ref, {
-                    name: myName,
-                    score: 0,
-                    x: 0,
-                    y: 20,
-                    z: 0,
-                    qx: 0,
-                    qy: 0,
-                    qz: 0,
-                    qw: 1,
-                    createdAt: serverTimestamp(),
-                    lastSeen: serverTimestamp()
-                });
-
-                // Set onDisconnect cleanup
-                onDisconnect(ref).delete();
-
-                loadingStatus.textContent = 'Entering the dream…';
-
-                // Hide join overlay, show HUD
-                joinOverlay.classList.add('hidden');
-                hud.style.display = 'flex';
-                document.querySelectorAll('.joystick').forEach(el => el.style.opacity = '1');
-
-                // Set player position
-                playerGroup.position.set(0, 20, 0);
-                camera.position.copy(playerGroup.position);
-                camera.quaternion.copy(playerGroup.quaternion);
-
-                // Start Firebase sync
-                startFirebaseSync();
-
-                // Start listening for signals (WebRTC handshake)
-                listenForSignals();
-
-                isJoined = true;
-
-                loadingOverlay.classList.remove('active');
-                joinBtn.disabled = false;
-
-            } catch (err) {
-                console.error('Join error:', err);
-                loadingOverlay.classList.remove('active');
-                joinBtn.disabled = false;
-                joinError.textContent = `❌ Failed to join: ${err.message || 'Unknown error'}. Check console.`;
-                // Reset state
-                myPlayerId = null;
-                isJoined = false;
-                joinOverlay.classList.remove('hidden');
-            }
+        box.position.set(x, h / 2, z);
+        box.castShadow = true;
+        box.receiveShadow = true;
+        scene.add(box);
+        // window lights
+        if (h > 8 && Math.random() > 0.55) {
+            const glow = new THREE.Mesh(
+                new THREE.BoxGeometry(0.35, 0.35, 0.35),
+                new THREE.MeshStandardMaterial({ color:0xfbbf24, emissive:0xfbbf24, emissiveIntensity:0.6 })
+            );
+            glow.position.set(
+                x + (Math.random()-0.5)*w*0.5,
+                2 + Math.random()*(h-4),
+                z + (Math.random()-0.5)*d*0.5
+            );
+            scene.add(glow);
         }
+    }
+})();
 
-        // ----- FIREBASE SYNC (same as before) -----
-        function startFirebaseSync() {
-            if (!myPlayerId) return;
+// Stars
+(function addStars(){
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(2000 * 3);
+    for (let i = 0; i < pos.length; i += 3) {
+        pos[i]   = (Math.random()-0.5)*600;
+        pos[i+1] = Math.random()*150 + 20;
+        pos[i+2] = (Math.random()-0.5)*600;
+    }
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    scene.add(new THREE.Points(geo, new THREE.PointsMaterial({
+        color:0x8899ff, size:0.55, transparent:true, opacity:0.85
+    })));
+})();
 
-            // Write position every 100ms
-            posInterval = setInterval(() => {
-                if (!isJoined) return;
-                const pos = playerGroup.position;
-                const rot = playerGroup.quaternion;
-                const ref = doc(db, 'players', myPlayerId);
-                setDoc(ref, {
-                    x: pos.x,
-                    y: pos.y,
-                    z: pos.z,
-                    qx: rot.x,
-                    qy: rot.y,
-                    qz: rot.z,
-                    qw: rot.w,
-                    lastSeen: serverTimestamp()
-                }, { merge: true }).catch(e => console.warn('Position update error:', e));
-            }, 100);
+// ── LOCAL PLAYER AVATAR ──────────────────────────────────────────
+const playerGroup = new THREE.Group();
+playerGroup.position.set(0, 20, 0);
 
-            // Listen to all players
-            const playersRef = collection(db, 'players');
-            firebaseUnsub = onSnapshot(playersRef, (snapshot) => {
-                const remotePositions = new Map();
-                let count = 0;
-                snapshot.forEach((docSnap) => {
-                    const id = docSnap.id;
-                    if (id === myPlayerId) return;
-                    const data = docSnap.data();
-                    if (!data.x && data.x !== 0) return;
-                    count++;
-                    let remote = remotePlayers.get(id);
-                    if (!remote) {
-                        const group = new THREE.Group();
-                        const sphere = new THREE.Mesh(
-                            new THREE.SphereGeometry(1, 16, 16),
-                            new THREE.MeshStandardMaterial({ color: 0x60a5fa, emissive: 0x3b82f6,
-                                emissiveIntensity: 0.2, roughness: 0.3 })
-                        );
-                        sphere.castShadow = true;
-                        group.add(sphere);
-                        const ring = new THREE.Mesh(
-                            new THREE.TorusGeometry(1.4, 0.06, 8, 20),
-                            new THREE.MeshStandardMaterial({ color: 0xa78bfa, emissive: 0x7c3aed,
-                                emissiveIntensity: 0.3, transparent: true, opacity: 0.5 })
-                        );
-                        ring.rotation.x = Math.PI / 2;
-                        group.add(ring);
-                        scene.add(group);
-                        remote = { mesh: group, data: data, panner: null, stream: null };
-                        remotePlayers.set(id, remote);
-                    }
-                    const pos = new THREE.Vector3(data.x, data.y, data.z);
-                    remote.mesh.position.copy(pos);
-                    if (data.qx !== undefined) {
-                        remote.mesh.quaternion.set(data.qx, data.qy, data.qz, data.qw);
-                    }
-                    remotePositions.set(id, pos);
-                    remote.data = data;
-                });
+const myAvatar = new THREE.Mesh(
+    new THREE.SphereGeometry(1.2, 16, 16),
+    new THREE.MeshStandardMaterial({
+        color:0xa78bfa, emissive:0x7c3aed, emissiveIntensity:0.3, roughness:0.2, metalness:0.1
+    })
+);
+myAvatar.castShadow = true;
+playerGroup.add(myAvatar);
 
-                // Remove disconnected players
-                for (const [id, remote] of remotePlayers) {
-                    if (id !== myPlayerId && !snapshot.docs.some(d => d.id === id)) {
-                        scene.remove(remote.mesh);
-                        remotePlayers.delete(id);
-                    }
-                }
+const myRing = new THREE.Mesh(
+    new THREE.TorusGeometry(1.8, 0.08, 8, 24),
+    new THREE.MeshStandardMaterial({
+        color:0x60a5fa, emissive:0x3b82f6, emissiveIntensity:0.4, transparent:true, opacity:0.7
+    })
+);
+myRing.rotation.x = Math.PI / 2;
+playerGroup.add(myRing);
+scene.add(playerGroup);
 
-                playerCountEl.textContent = count;
-                nearbyCountEl.textContent = remotePlayers.size;
+// ── JOYSTICKS ────────────────────────────────────────────────────
+const leftInput  = { x:0, y:0 };
+const rightInput = { x:0, y:0 };
+
+function setupJoystick(el, knob, out) {
+    const RADIUS = el.offsetWidth / 2 - 12;
+
+    function move(cx, cy) {
+        const rect = el.getBoundingClientRect(); // live rect each event
+        const dx   = cx - (rect.left + rect.width  / 2);
+        const dy   = cy - (rect.top  + rect.height / 2);
+        const dist = Math.hypot(dx, dy);
+        const clamped = Math.min(dist, RADIUS);
+        const angle   = Math.atan2(dy, dx);
+        const nx = Math.cos(angle) * (clamped / RADIUS);
+        const ny = Math.sin(angle) * (clamped / RADIUS);
+        knob.style.transform = `translate(${nx*RADIUS}px,${ny*RADIUS}px)`;
+        out.x =  nx;
+        out.y = -ny;
+    }
+    function reset() {
+        knob.style.transform = 'translate(0,0)';
+        out.x = out.y = 0;
+    }
+
+    // Touch
+    el.addEventListener('touchstart', e => { e.preventDefault(); const t=e.touches[0]; if(t) move(t.clientX,t.clientY); }, { passive:false });
+    el.addEventListener('touchmove',  e => { e.preventDefault(); const t=e.touches[0]; if(t) move(t.clientX,t.clientY); }, { passive:false });
+    el.addEventListener('touchend',   e => { e.preventDefault(); reset(); }, { passive:false });
+    el.addEventListener('touchcancel',e => { e.preventDefault(); reset(); }, { passive:false });
+
+    // Mouse fallback
+    let down = false;
+    el.addEventListener('mousedown', e => { down=true; move(e.clientX,e.clientY); });
+    window.addEventListener('mousemove', e => { if(down) move(e.clientX,e.clientY); });
+    window.addEventListener('mouseup',   () => { if(down){ down=false; reset(); } });
+}
+
+setupJoystick(document.getElementById('leftStick'),  document.getElementById('leftKnob'),  leftInput);
+setupJoystick(document.getElementById('rightStick'), document.getElementById('rightKnob'), rightInput);
+
+// ── GAME STATE ───────────────────────────────────────────────────
+let myId        = null;
+let isJoined    = false;
+let firestoreUnsub = null;
+let posTimer    = null;
+
+const remotePlayers = new Map(); // id → { group, label }
+
+const velocity = new THREE.Vector3();
+const euler    = new THREE.Euler(0, 0, 0, 'YXZ');
+const MAX_SPEED = 0.55;
+
+// ── JOIN ─────────────────────────────────────────────────────────
+async function joinGame(rawName) {
+    const name = rawName.trim();
+    if (!name) { joinError.textContent = 'Please enter a name.'; return; }
+
+    joinError.textContent = '';
+    joinBtn.disabled      = true;
+    loadingStatus.textContent = 'Creating your avatar…';
+    loadingOverlay.classList.add('active');
+
+    try {
+        myId = `p_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+
+        const ref = doc(db, 'players', myId);
+
+        // Initial create – must match security rule 'create' allowed fields exactly
+        await setDoc(ref, {
+            name,
+            score:     0,
+            x: 0, y: 20, z: 0,
+            qx: 0, qy: 0, qz: 0, qw: 1,
+            createdAt: serverTimestamp(),
+            lastSeen:  serverTimestamp()
+        });
+
+        loadingStatus.textContent = 'Entering the dream…';
+
+        // Cleanup on tab close (best-effort)
+        window.addEventListener('beforeunload', () => deleteDoc(ref));
+
+        // Show game UI
+        joinOverlay.classList.add('hidden');
+        hud.style.display = 'flex';
+        document.querySelectorAll('.joystick').forEach(el => el.style.opacity = '1');
+
+        playerGroup.position.set(0, 20, 0);
+        euler.set(0, 0, 0);
+        playerGroup.quaternion.setFromEuler(euler);
+
+        startSync(ref);
+        isJoined = true;
+        loadingOverlay.classList.remove('active');
+
+    } catch (err) {
+        console.error('Join error:', err);
+        loadingOverlay.classList.remove('active');
+        joinBtn.disabled = false;
+        joinError.textContent = `❌ ${err.message || 'Failed to connect. Check console (F12).'}`;
+        myId = null;
+    }
+}
+
+// ── FIREBASE SYNC ────────────────────────────────────────────────
+function startSync(myRef) {
+
+    // Position writer – sends ONLY the fields the update rule allows
+    posTimer = setInterval(async () => {
+        if (!isJoined) return;
+        const p = playerGroup.position;
+        const q = playerGroup.quaternion;
+        try {
+            await updateDoc(myRef, {
+                x: p.x, y: p.y, z: p.z,
+                qx: q.x, qy: q.y, qz: q.z, qw: q.w,
+                lastSeen: serverTimestamp()
             });
+        } catch (e) {
+            // Non-fatal – log only in dev
+            console.warn('pos update:', e.code, e.message);
         }
+    }, 120);
 
-        // ----- SIGNALS LISTENER (WebRTC – placeholder) -----
-        function listenForSignals() {
-            // In a real implementation, you'd set up RTCPeerConnection here.
-            // For this demo, we just log.
-            console.log('Signals listening active (WebRTC placeholder)');
-        }
+    // Live player list
+    firestoreUnsub = onSnapshot(collection(db, 'players'), snap => {
+        const seen = new Set();
+        let total = 0;
+        let nearby = 0;
 
-        // ----- LEAVE / CLEANUP -----
-        function leaveGame() {
-            if (myPlayerId) {
-                deleteDoc(doc(db, 'players', myPlayerId)).catch(() => {});
+        snap.forEach(docSnap => {
+            const id   = docSnap.id;
+            const data = docSnap.data();
+            if (id === myId) return;
+            if (data.x == null) return;
+
+            total++;
+            seen.add(id);
+
+            // Upsert remote avatar
+            if (!remotePlayers.has(id)) {
+                const group = new THREE.Group();
+                const sphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(1, 16, 16),
+                    new THREE.MeshStandardMaterial({ color:0x60a5fa, emissive:0x3b82f6, emissiveIntensity:0.2, roughness:0.3 })
+                );
+                sphere.castShadow = true;
+                group.add(sphere);
+                const ring = new THREE.Mesh(
+                    new THREE.TorusGeometry(1.4, 0.06, 8, 20),
+                    new THREE.MeshStandardMaterial({ color:0xa78bfa, emissive:0x7c3aed, emissiveIntensity:0.3, transparent:true, opacity:0.55 })
+                );
+                ring.rotation.x = Math.PI / 2;
+                group.add(ring);
+                scene.add(group);
+                remotePlayers.set(id, { group });
             }
-            if (firebaseUnsub) firebaseUnsub();
-            if (posInterval) clearInterval(posInterval);
-            // Remove remote meshes
-            for (const [id, remote] of remotePlayers) {
-                scene.remove(remote.mesh);
-            }
-            remotePlayers.clear();
-            isJoined = false;
-            myPlayerId = null;
-            joinOverlay.classList.remove('hidden');
-            hud.style.display = 'none';
-            document.querySelectorAll('.joystick').forEach(el => el.style.opacity = '0.3');
-            joinError.textContent = '';
-        }
 
-        // ----- ANIMATION LOOP -----
-        function animate() {
-            requestAnimationFrame(animate);
-            // Flight controls (same as before)
-            const forward = new THREE.Vector3(0, 0, -1);
-            forward.applyQuaternion(playerGroup.quaternion);
-            const right = new THREE.Vector3(1, 0, 0);
-            right.applyQuaternion(playerGroup.quaternion);
+            const rp = remotePlayers.get(id);
+            rp.group.position.set(data.x, data.y, data.z);
+            if (data.qx != null) rp.group.quaternion.set(data.qx, data.qy, data.qz, data.qw);
 
-            const moveX = leftStick.x;
-            const moveY = leftStick.y;
-            const desiredVel = new THREE.Vector3()
-                .addScaledVector(forward, -moveY * maxSpeed)
-                .addScaledVector(right, moveX * maxSpeed);
-            velocity.x += (desiredVel.x - velocity.x) * 0.1;
-            velocity.z += (desiredVel.z - velocity.z) * 0.1;
-            velocity.y = -moveY * 0.06;
-
-            playerGroup.position.x += velocity.x;
-            playerGroup.position.y += velocity.y;
-            playerGroup.position.z += velocity.z;
-            if (playerGroup.position.y < 1) playerGroup.position.y = 1;
-            if (playerGroup.position.y > 80) playerGroup.position.y = 80;
-
-            // Rotation
-            targetRotation.y -= rightStick.x * 0.008;
-            targetRotation.x -= rightStick.y * 0.008;
-            targetRotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, targetRotation.x));
-            euler.y += (targetRotation.y - euler.y) * 0.12;
-            euler.x += (targetRotation.x - euler.x) * 0.12;
-            playerGroup.quaternion.setFromEuler(euler);
-
-            camera.position.copy(playerGroup.position);
-            camera.quaternion.copy(playerGroup.quaternion);
-
-            renderer.render(scene, camera);
-        }
-        animate();
-
-        // ----- WINDOW RESIZE -----
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            const dist = playerGroup.position.distanceTo(rp.group.position);
+            if (dist < 40) nearby++;
         });
 
-        // ----- EVENT BINDINGS -----
-        joinBtn.addEventListener('click', () => joinGame(nameInput.value));
-        nameInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') joinGame(nameInput.value);
-        });
+        // Remove stale players
+        for (const [id, rp] of remotePlayers) {
+            if (!seen.has(id)) {
+                scene.remove(rp.group);
+                remotePlayers.delete(id);
+            }
+        }
 
-        // Initial state
-        document.querySelectorAll('.joystick').forEach(el => el.style.opacity = '0.3');
+        playerCountEl.textContent = total;
+        nearbyCountEl.textContent = nearby;
+    }, err => {
+        console.error('Firestore snapshot error:', err);
+    });
+}
 
-        console.log('🌌 Dream City Fly loaded – enter a name and launch!');
-    </script>
+// ── ANIMATION LOOP ───────────────────────────────────────────────
+function animate() {
+    requestAnimationFrame(animate);
+
+    if (isJoined) {
+        // Forward / right vectors from current orientation
+        const fwd   = new THREE.Vector3(0, 0, -1).applyQuaternion(playerGroup.quaternion);
+        const right = new THREE.Vector3(1, 0,  0).applyQuaternion(playerGroup.quaternion);
+
+        // Left stick: x=strafe, y=forward/back
+        const desired = new THREE.Vector3()
+            .addScaledVector(fwd,   leftInput.y * MAX_SPEED)
+            .addScaledVector(right, leftInput.x * MAX_SPEED);
+
+        velocity.x += (desired.x - velocity.x) * 0.1;
+        velocity.z += (desired.z - velocity.z) * 0.1;
+        // Vertical: tilt of left stick y gives gentle lift/sink
+        velocity.y  = leftInput.y * 0.05;
+
+        playerGroup.position.add(velocity);
+        playerGroup.position.y = Math.max(1, Math.min(90, playerGroup.position.y));
+
+        // Right stick: yaw left/right, pitch up/down
+        euler.y -= rightInput.x * 0.025;
+        euler.x -= rightInput.y * 0.018;
+        euler.x  = Math.max(-Math.PI/3, Math.min(Math.PI/3, euler.x));
+        playerGroup.quaternion.setFromEuler(euler);
+
+        // Camera follows player
+        camera.position.copy(playerGroup.position);
+        camera.quaternion.copy(playerGroup.quaternion);
+
+        // Gentle ring spin
+        myRing.rotation.z += 0.006;
+    }
+
+    renderer.render(scene, camera);
+}
+animate();
+
+// ── RESIZE ───────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+});
+
+// ── EVENT BINDINGS ───────────────────────────────────────────────
+joinBtn.addEventListener('click', () => joinGame(nameInput.value));
+nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') joinGame(nameInput.value); });
+nameInput.focus();
+
+// Initial joystick opacity
+document.querySelectorAll('.joystick').forEach(el => el.style.opacity = '0.3');
+</script>
 </body>
 </html>
